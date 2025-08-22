@@ -1,21 +1,46 @@
 #!/bin/bash
 
-# مسار التثبيت النهائي للثيم
-THEME_DIR="/var/www/pterodactyl/resources/themes/WooDHosT"
+THEME_NAME="WooDHosT"
+THEME_DIR="/var/www/pterodactyl/resources/themes/$THEME_NAME"
+PANEL_DIR="/var/www/pterodactyl"
 
-# إنشاء المجلد إذا لم يكن موجود
-mkdir -p $THEME_DIR
+echo "🔍 فحص مسار الثيم..."
+if [ ! -d "$THEME_DIR" ]; then
+    echo "❌ مجلد الثيم $THEME_NAME غير موجود في $THEME_DIR"
+    exit 1
+else
+    echo "✅ مجلد الثيم موجود"
+fi
 
-# نسخ كل ملفات الثيم إلى المسار الصحيح
-cp -R ./* $THEME_DIR
+echo "🔍 فحص theme.json..."
+if [ ! -f "$THEME_DIR/theme.json" ]; then
+    echo "❌ theme.json غير موجود في $THEME_DIR"
+    exit 1
+else
+    # التحقق من صحة JSON
+    if ! jq empty "$THEME_DIR/theme.json" >/dev/null 2>&1; then
+        echo "❌ theme.json غير صالح، تحقق من الصياغة"
+        exit 1
+    else
+        echo "✅ theme.json صالح"
+    fi
+fi
 
-# تعيين الأذونات
-chown -R www-data:www-data $THEME_DIR
+echo "🔧 ضبط الصلاحيات..."
+chown -R www-data:www-data "$THEME_DIR"
+chmod -R 755 "$THEME_DIR"
+echo "✅ الصلاحيات تم ضبطها"
 
-# تنظيف الكاش فورًا
-cd /var/www/pterodactyl
+echo "🧹 تنظيف الكاش..."
+cd $PANEL_DIR
 php artisan view:clear
 php artisan cache:clear
 php artisan config:clear
+echo "✅ الكاش تم تنظيفه"
 
-echo "WooDHosT theme installed and ready!"
+echo "🔄 إعادة تشغيل خدمات PHP/Nginx..."
+systemctl restart php8.1-fpm
+systemctl restart nginx
+echo "✅ الخدمات تم إعادة تشغيلها"
+
+echo "🎉 تم تجهيز الثيم $THEME_NAME! افتح لوحة Pterodactyl وتحقق من قائمة المظهر."
